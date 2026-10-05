@@ -1,3 +1,4 @@
+#if UNITY_EDITOR // Editor-only inspector button, excluded from player builds
 using UnityEditor;
 using UnityEngine;
 
@@ -15,3 +16,4 @@ public class FloorDividerEditor : Editor
         }
     }
 }
+#endif
