@@ -181,6 +181,9 @@ public class AIGuide : MonoBehaviour
 
         // Reset player interaction time with the client
         lastPlayerInteractionTime = Time.time;
+
+        // Have the guide greet the player now that the session is fully set up
+        await SendOpeningGreeting(memoryManager);
     }
 
     // For ensuring proper realtime data
@@ -865,6 +868,67 @@ public class AIGuide : MonoBehaviour
     }
 
     // May need to think about selectively sending hazards // making a harsher cooldown timer between when it can warn
+    #endregion
+
+    #region Opening Greeting
+    private async Task SendOpeningGreeting(MemoryManager memoryManager)
+    {
+        if (m_SwitchToolsScript == null || !m_SwitchToolsScript.openingGreeting) return;
+
+        // Give the scene a moment to settle so the player is ready to hear the greeting
+        float interactionTimeBeforeDelay = lastPlayerInteractionTime;
+        await Task.Delay((int)(m_SwitchToolsScript.greetingDelay * 1000));
+
+        // Don't talk over the player if they started talking to the guide during the delay (or the guide was destroyed)
+        if (this == null || isRecording || realtimeClient._isAiSpeaking || lastPlayerInteractionTime != interactionTimeBeforeDelay)
+        {
+            Debug.Log("[AI Guide] Skipping opening greeting since the player already started interacting.");
+            return;
+        }
+
+        // A returning player (stateful session with past memory) already knows the guide, so only welcome them back
+        bool isReturningPlayer = memoryManager != null && memoryManager.statefulSession &&
+                                 !string.IsNullOrEmpty(memoryManager.GetFormattedSessionHistory());
+
+        string prompt = GetOpeningGreetingPrompt(isReturningPlayer);
+        Debug.Log($"[AI Guide] Sending opening greeting (returning player: {isReturningPlayer})");
+
+        _ = realtimeClient.SendManualPrompt(prompt);
+    }
+
+    private string GetOpeningGreetingPrompt(bool isReturningPlayer)
+    {
+        // Tell the player how to talk to the guide based on the active voice input mode
+        string howToTalk;
+        if (realtimeClient._continuousVoiceOn)
+            howToTalk = "they can just start talking to you whenever they want";
+        else if (realtimeClient._legacyHoldToSpeakOn)
+            howToTalk = "they can hold down the A button on their right controller while they talk to you";
+        else
+            howToTalk = "they can press the A button on their right controller and then talk to you";
+
+        if (isReturningPlayer)
+        {
+            return "The player has just arrived back in the virtual environment and hasn't said anything yet. " +
+                   "You have met them before, so do NOT introduce yourself again or list everything you can do. " +
+                   "In one or two short sentences, warmly welcome them back, and if it feels natural, briefly mention one thing you explored together last time. " +
+                   "Then ask them one simple question about what they'd like to do or explore today. For example: " +
+                   "Welcome back! It's Giddy again. Last time we explored [something from your memory] together. What would you like to explore today? " +
+                   "Speak directly to the player and do not acknowledge these instructions. Do not call any tools.";
+        }
+
+        return "The player has just arrived in the virtual environment for the first time and hasn't said anything yet. " +
+               "Greet them warmly and introduce yourself as Giddy, their sighted guide. " +
+               "In a few short sentences, explain what you can help with: describing what's around them and what things look like, " +
+               "telling them where things are, and guiding them to places by walking with them or teleporting them there. " +
+               $"Let them know that {howToTalk}, and that they can ask you anything at any time. " +
+               "Then end by asking them one simple, open question about what they'd like to know or do first. " +
+               "Keep the whole greeting under about 20 seconds when spoken, and don't describe the scene in detail yet. For example: " +
+               "Hi there, I'm Giddy, and I'll be your sighted guide today. I can tell you what's around you, describe what things look like, " +
+               "let you know where things are, and walk you anywhere you'd like to go. [How to talk to you.] " +
+               "So, what would you like to know about first? " +
+               "Speak directly to the player and do not acknowledge these instructions. Do not call any tools.";
+    }
     #endregion
 
     #region Proactive Silence Helpers

@@ -33,6 +33,10 @@ public class SwitchTools : MonoBehaviour
     private GuideType _currentGuideType = GuideType.Baseline;
     [Tooltip("The silence time in seconds that the guide waits for before responding")]
     public float silenceThreshold = 2.5f; // default is 2.5 seconds, 1.2 cuts you off a lot
+    [Tooltip("If on, the guide greets the player and introduces itself when the session starts")]
+    public bool openingGreeting = true;
+    [Tooltip("The time in seconds after the guide connects before it greets the player")]
+    public float greetingDelay = 2f;
 
     public GuideType activeGuideType
     {
