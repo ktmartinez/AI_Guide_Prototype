@@ -53,6 +53,10 @@ public class AIGuide : MonoBehaviour
     private float perObjectCooldown = 20.0f;
     private float maxTTCOfInterest = 2.0f;
 
+    // Variables for moving hazards (cars, pedestrians, animals - see WaypointMover)
+    private float movingHazardRadius = 12.0f; // only consider movers this close (XZ distance)
+    private float maxMovingTTCOfInterest = 3.0f; // movers close faster than the player walks, so warn a little earlier
+
     // Variables for prompting the user if they need assistance
     private float lastPlayerInteractionTime;
     private float idleTimeout = 120f; // seconds before guide asks if someone needs help
@@ -740,6 +744,9 @@ public class AIGuide : MonoBehaviour
         // If the AI guide is currently speaking, completely drop this hazard calculation to prevent building up a queue of historical hazards
         if (realtimeClient._isAiSpeaking) return;
 
+        // Moving objects can come at a player who is standing still, so check them before the player-velocity gate
+        if (CheckMovingHazards()) return;
+
         // Use the true velocity to minimize what we talk about in a cramped space
         if (trueWorldVelocity.magnitude < 0.3f) return;
 
@@ -840,13 +847,17 @@ public class AIGuide : MonoBehaviour
         return true;
     }
 
-    private void HandleHazardPrompt(GameObject hazard)
+    // Update timing states immediately to lock out back-to-back hazard alerts
+    private void MarkHazardPrompted(GameObject hazard)
     {
-        // Update timing states immediately to lock out back-to-back hazard alerts
-        int hazardID = hazard.GetInstanceID();
-        promptedHazardsHistory[hazardID] = Time.time;
+        promptedHazardsHistory[hazard.GetInstanceID()] = Time.time;
         lastHazardPromptTime = Time.time;
         lastHazardPrompted = hazard;
+    }
+
+    private void HandleHazardPrompt(GameObject hazard)
+    {
+        MarkHazardPrompted(hazard);
 
         string hazardName = hazard.name;
         string prompt = $"The player is approaching {hazardName}. " +
@@ -857,6 +868,91 @@ public class AIGuide : MonoBehaviour
                         "You're coming up on the tall building now. " +
                         "Use the conversation history to see how you've warned the player before and change up your language.";
         // Debug.Log("Hazard Detection Response: " + prompt);
+
+        _ = realtimeClient.SendManualPrompt(prompt);
+    }
+
+    // Warn about movers (cars, pedestrians, animals) on a collision course with the player, using their velocity
+    // relative to the player so a car approaching a player who is standing still is still caught. Returns true if it prompted.
+    private bool CheckMovingHazards()
+    {
+        if (WaypointMover.Active.Count == 0) return false;
+
+        Vector3 headPosition = headsetTransform.position;
+        Vector3 flatPlayerPoint = new Vector3(headPosition.x, 0, headPosition.z);
+        // Approximate floor level assuming the headset is ~1.5m above the ground
+        float estimatedFloorY = headPosition.y - 1.5f;
+        float playerRadius = 0.45f;
+
+        GameObject bestCandidate = null;
+        Vector3 bestVectorToHazard = Vector3.zero;
+        float lowestTimeToCollision = float.MaxValue;
+
+        foreach (WaypointMover mover in WaypointMover.Active)
+        {
+            Collider hit = mover.hazardCollider;
+            if (hit == null || !hit.enabled || !hit.gameObject.activeInHierarchy) continue;
+            if ((hazardLayerMask.value & (1 << hit.gameObject.layer)) == 0) continue;
+
+            // Only movers that share the player's body space matter - skip birds flying overhead
+            Bounds bounds = hit.bounds;
+            if (bounds.min.y > headPosition.y + 0.3f || bounds.max.y < estimatedFloorY) continue;
+
+            Vector3 hazardPoint = hit.ClosestPoint(headPosition);
+            Vector3 vectorToHazard = new Vector3(hazardPoint.x, 0, hazardPoint.z) - flatPlayerPoint;
+            float distance = vectorToHazard.magnitude;
+            if (distance > movingHazardRadius) continue;
+
+            // Velocity of the mover relative to the player, flattened to the ground plane
+            Vector3 relativeVelocity = new Vector3(mover.Velocity.x - trueWorldVelocity.x, 0, mover.Velocity.z - trueWorldVelocity.z);
+            if (relativeVelocity.sqrMagnitude < 0.01f) continue;
+
+            // Closest point of approach between the mover and the player - skip movers that are leaving or will pass by
+            Vector3 relativeCenter = new Vector3(bounds.center.x, 0, bounds.center.z) - flatPlayerPoint;
+            float timeToClosestApproach = -Vector3.Dot(relativeCenter, relativeVelocity) / relativeVelocity.sqrMagnitude;
+            if (timeToClosestApproach <= 0f) continue;
+            float missDistance = (relativeCenter + relativeVelocity * timeToClosestApproach).magnitude;
+            if (missDistance > playerRadius + Mathf.Max(bounds.extents.x, bounds.extents.z)) continue;
+
+            // TTC - how long until the gap closes at the current closing speed
+            float timeToCollision = 0f;
+            if (distance > 0.1f)
+            {
+                float closingSpeed = -Vector3.Dot(relativeVelocity, vectorToHazard / distance);
+                if (closingSpeed <= 0.05f) continue;
+                timeToCollision = distance / closingSpeed;
+            }
+            if (timeToCollision > maxMovingTTCOfInterest) continue;
+
+            if (timeToCollision < lowestTimeToCollision)
+            {
+                lowestTimeToCollision = timeToCollision;
+                bestCandidate = hit.gameObject;
+                bestVectorToHazard = vectorToHazard;
+            }
+        }
+
+        if (bestCandidate == null || !ShouldPrompt(bestCandidate)) return false;
+
+        HandleMovingHazardPrompt(bestCandidate, bestVectorToHazard);
+        return true;
+    }
+
+    private void HandleMovingHazardPrompt(GameObject hazard, Vector3 flatVectorToHazard)
+    {
+        MarkHazardPrompted(hazard);
+
+        // Describe where it's coming from relative to where the player is facing
+        Vector3 flatHeadsetForward = new Vector3(headsetTransform.forward.x, 0, headsetTransform.forward.z).normalized;
+        float angle = Vector3.SignedAngle(flatHeadsetForward, flatVectorToHazard, Vector3.up);
+        string direction = Mathf.Abs(angle) <= 45f ? "the front" : Mathf.Abs(angle) >= 135f ? "behind" : angle > 0f ? "their right" : "their left";
+
+        string prompt = $"{hazard.name} is moving toward the player from {direction}, about {Mathf.RoundToInt(flatVectorToHazard.magnitude)} meters away. " +
+                        "Warn them briefly and clearly so they can stop or step out of the way. DO NOT add any extra fluff. For example: " +
+                        "Careful, a car is coming from your left. Stay where you are for a moment. " +
+                        "Heads up, someone is walking toward you from the front. You might want to step to the side. " +
+                        "Use the conversation history to see how you've warned the player before and change up your language.";
+        // Debug.Log("Moving Hazard Detection Response: " + prompt);
 
         _ = realtimeClient.SendManualPrompt(prompt);
     }
