@@ -3,7 +3,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 public class SwitchTools : MonoBehaviour
 {
@@ -171,7 +170,7 @@ public class SwitchTools : MonoBehaviour
         }
     }*/
 
-    [FormerlySerializedAs("pushToTalk")]
+    // Not carried over from the old "pushToTalk" field, since pushToTalk = true meant tap-to-talk (now the default), the opposite of hold-to-speak
     [HideInInspector] public bool legacyHoldToSpeak = false;
     [HideInInspector] public bool continuousVoice = false;
     [HideInInspector] public bool personalVoicesOn = false;

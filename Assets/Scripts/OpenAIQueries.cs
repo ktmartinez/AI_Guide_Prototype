@@ -94,6 +94,8 @@ public class RealtimeGuideClient : MonoBehaviour
     private float _silenceTimer = 0f;
     private float _silenceThreshold = 2.5f; // Seconds of silence before auto-stopping
     private float _volumeThreshold = 0.05f; // Minimum volume to be considered talking, was 0.02f, caught computer fan
+    private float _noSpeechTimeout = 10f; // Seconds to wait for the user to start talking before we stop listening
+    private float _noSpeechTimer = 0f;
     private bool _hasSpoken = false; // Prevents auto-stopping before a user starts talking
 
     // Variables for other customizations
@@ -132,7 +134,17 @@ public class RealtimeGuideClient : MonoBehaviour
         // Determine which version of audio generation is to be used
         personalVoicesMode = FindObjectOfType<SwitchTools>().personalVoicesOn;
 
+        // Prefer the Quest headset mic over other virtual mics (like VIVE's) that can be listed first on PC
         _micDevice = Microphone.devices[0];
+        foreach (string device in Microphone.devices)
+        {
+            if (device.Contains("Oculus") || device.Contains("Headset"))
+            {
+                _micDevice = device;
+                break;
+            }
+        }
+        Debug.Log($"Using microphone '{_micDevice}' (available: {string.Join(", ", Microphone.devices)})");
     }
 
     private void getAudioSync()
@@ -678,6 +690,7 @@ public class RealtimeGuideClient : MonoBehaviour
         // Reset variables for voice detection
         _hasSpoken = false;
         _silenceTimer = 0f;
+        _noSpeechTimer = 0f;
 
         // Interrupt any current AI speech if the user interrupts
         outputSource.Stop();
@@ -726,6 +739,23 @@ public class RealtimeGuideClient : MonoBehaviour
         }
 
         _totalSamplesSent = 0; // Reset for next time
+        _lastMicPos = 0;
+    }
+
+    // Stops listening when the user never started talking, without sending the silence to OpenAI
+    private async Task StopRecordingWithoutSpeech()
+    {
+        Debug.Log("Recording stopped (no speech detected)");
+
+        // LOGGER HOOK: User finished speech input - call without text to mark when the user stopped talking
+        InteractionLogger.Instance?.OnUserFinishedSpeaking();
+
+        _isRecording = false;
+        Microphone.End(_micDevice);
+        await SendJson(new { type = "input_audio_buffer.clear" });
+        _openAIQueriesScript.PlayPredeterminedAudio("emptyQuery");
+
+        _totalSamplesSent = 0;
         _lastMicPos = 0;
     }
 
@@ -861,6 +891,18 @@ public class RealtimeGuideClient : MonoBehaviour
 
                 // Execute the stop and commit
                 _ = StopRecordingAndCommit();
+            }
+        }
+        // If they never started talking (e.g. the mic isn't picking them up), stop listening so they can try again
+        else
+        {
+            _noSpeechTimer += (float)samples.Length / SAMPLE_RATE;
+
+            if (_noSpeechTimer > _noSpeechTimeout)
+            {
+                _noSpeechTimer = 0f;
+                OnAutoStopRecording?.Invoke();
+                _ = StopRecordingWithoutSpeech();
             }
         }
     }
@@ -1224,7 +1266,7 @@ public class RealtimeGuideClient : MonoBehaviour
                         string alias = (string)argsObj["alias"]; // "striped house"
 
                         GameObject obj = _openAIQueriesScript.GetClosestObjectByName(targetName);
-                        if (obj != null)
+                        if (obj != null && perceptionSensor != null) // Only scenes like the Kitchen have a perception sensor to store nicknames
                         {
                             // Call the sensor function to add the new alias
                             perceptionSensor.AddAliasToAnchor(obj, alias);
@@ -1255,7 +1297,7 @@ public class RealtimeGuideClient : MonoBehaviour
                         string outputPayload;
                         if (obj != null)
                         {
-                            float objectAngle = perceptionSensor.GetObjectRelativeAngle(obj);
+                            float? objectAngle = perceptionSensor != null ? perceptionSensor.GetObjectRelativeAngle(obj) : (float?)null; // No angle without a perception sensor (e.g. the Tutorial)
                             // Keep the payload strictly factual. No behavioral commands here.
                             outputPayload = JsonConvert.SerializeObject(new
                             {

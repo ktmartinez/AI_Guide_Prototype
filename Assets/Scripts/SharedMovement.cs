@@ -256,6 +256,10 @@ public class SharedMovement : MonoBehaviour
     {
         // Debug.Log("Collision detected");
 
+        // Triggers can fire before the player has spawned in
+        if (thePlayer == null)
+            return;
+
         // On collisions with objects, if the other object has a grab interactable component (is an interactable), keep collisions on
         // If not, turn collisions off - the guide falls in this second category where we want to ignore collisions while we're grabbing it
         if (other.GetComponentInChildren<XRGrabInteractable>())

@@ -432,21 +432,33 @@ public class AIGuide : MonoBehaviour
 
     private IEnumerator CaptureImageContext()
     {
+        // Scenes like the Tutorial don't have a perception sensor, so they only get screenshots (no masks or spatial telemetry)
+        bool hasSpatialTelemetry = perceptionSensor != null;
+
         // Trigger the screenshot
         camSystem.converted = false;
-        camSystem.CaptureScreenshot();
+        camSystem.CaptureScreenshot(!hasSpatialTelemetry);
 
         // Trigger the mask screenshots
-        masksCaptured = false;
-        perceptionSensor.RequestVisualTelemetry(() =>
+        masksCaptured = !hasSpatialTelemetry;
+        if (hasSpatialTelemetry)
         {
-            masksCaptured = true; // This fires when the batch rendering is complete
-        });
+            perceptionSensor.RequestVisualTelemetry(() =>
+            {
+                masksCaptured = true; // This fires when the batch rendering is complete
+            });
+        }
 
         // Wait for BOTH standard and mask captures to finish
         while (!camSystem.converted || !masksCaptured)
         {
             yield return null;
+        }
+
+        if (!hasSpatialTelemetry)
+        {
+            realtimeClient.SendVisualContext(camSystem.viewpointImageBase64, camSystem.birdsEyeImageBase64, camSystem.overheadImageBase64);
+            yield break;
         }
 
         // Grab the dynamic text context NOW that captures are done
@@ -717,8 +729,11 @@ public class AIGuide : MonoBehaviour
                 StopRouteDescriptions(); // keep the guide from talking if there are no targets
 
                 m_GuideFollowScript.enabled = true; // Turn guide follow back on if no target is given to the guide
-                m_SharedMovementScript.guideCollider.enabled = false; // Turns collider off so guide won't be grabbed accidentally as it follows the player
-                m_SharedMovementScript.OnTriggerExit(m_SharedMovementScript.guideCollider); // Triggers the exit event so the system sets the guide's grabbing trigger to false
+                if (m_SharedMovementScript.guideCollider != null) // Shared movement assigns the guide's collider once both the player and guide have spawned
+                {
+                    m_SharedMovementScript.guideCollider.enabled = false; // Turns collider off so guide won't be grabbed accidentally as it follows the player
+                    m_SharedMovementScript.OnTriggerExit(m_SharedMovementScript.guideCollider); // Triggers the exit event so the system sets the guide's grabbing trigger to false
+                }
             }
         }
     }
@@ -728,12 +743,11 @@ public class AIGuide : MonoBehaviour
     private void getSharedMovement()
     {
         if (m_SharedMovementScript == null)
-        {
             m_SharedMovementScript = FindObjectOfType<SharedMovement>();
-            // Can grab the camSystem once the shared movement script has been added + has added its own camera
-            if (camSystem == null && m_SharedMovementScript.camera != null)
-                camSystem = m_SharedMovementScript.camera;
-        }
+
+        // Can grab the camSystem once the shared movement script has been added + has added its own camera
+        if (camSystem == null && m_SharedMovementScript != null && m_SharedMovementScript.camera != null)
+            camSystem = m_SharedMovementScript.camera;
     }
     #endregion
 
@@ -1048,6 +1062,15 @@ public class AIGuide : MonoBehaviour
     // otherwise, maybe have a bool in the openAIqueries that gets set when the function determines it wants to be grabbing
     public void StartGrabbing(string targetName)
     {
+        // Grab assist tracks the player's hand with the perception sensor, which scenes like the Tutorial don't have
+        if (perceptionSensor == null)
+        {
+            Debug.LogWarning("[AI Guide] Grab assist needs a SpatialPerceptionSensor in the scene, so it was skipped.");
+            _ = realtimeClient.SendManualPrompt($"You can't track the player's hand in this area, so you can't coach them to grab the {targetName}. " +
+                "Briefly tell them that, and offer to describe where it is instead. Keep it under 20 words.");
+            return;
+        }
+
         targetToGrab = targetName;
         isGrabbing = true;
 
