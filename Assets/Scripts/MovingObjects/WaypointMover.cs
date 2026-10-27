@@ -36,6 +36,8 @@ public class WaypointMover : MonoBehaviour
     public string speedParameter = "Speed";
 
     [Header("Guide Detection")]
+    [Tooltip("Have the guide warn the player when this mover heads toward them - turn off for ambient flavor like birds")]
+    public bool warnPlayer = true;
     [Tooltip("Collider the guide uses for hazard warnings - the named mesh object on the Key Items layer")]
     public Collider hazardCollider;
 
@@ -187,10 +189,11 @@ public class WaypointMover : MonoBehaviour
         Vector3 heading = tangent * (leg.endDistance >= leg.startDistance ? 1f : -1f);
         Velocity = leg.IsTravel ? heading * speed : Vector3.zero;
 
-        if (bobAmplitude > 0f)
+        // Bob only while travelling, easing out toward each waypoint so a bird that lands or perches sits still
+        if (bobAmplitude > 0f && leg.IsTravel)
         {
             double bobPhase = (now * bobFrequency + cycleOffset) % 1.0;
-            position.y += bobAmplitude * Mathf.Sin((float)bobPhase * 2f * Mathf.PI);
+            position.y += bobAmplitude * Mathf.Sin(progress * Mathf.PI) * Mathf.Sin((float)bobPhase * 2f * Mathf.PI);
         }
         position.y += heightOffset;
         transform.position = position;
@@ -220,9 +223,9 @@ public class WaypointMover : MonoBehaviour
         return nextTangent * (next.endDistance >= next.startDistance ? 1f : -1f);
     }
 
-    // Editor helper: place the object where it will be at the start of its cycle
+    // Editor helper: place the object where it will be at the start of its cycle (also used by MovingObjectsTestSetup)
     [ContextMenu("Snap To Cycle Start")]
-    private void SnapToCycleStart()
+    public void SnapToCycleStart()
     {
         if (animator == null) animator = GetComponentInChildren<Animator>();
         BuildTimeline();

@@ -3058,6 +3058,7 @@ GameObject:
   - component: {fileID: 4704761821880256675}
   - component: {fileID: 307641217349714380}
   - component: {fileID: 3667957325464182319}
+  - component: {fileID: 8740197457220110411}
   m_Layer: 13
   m_Name: Corgi
   m_TagString: Untagged
@@ -7142,3 +7143,34 @@ Transform:
   - {fileID: 4773320115838977254}
   m_Father: {fileID: 5259574034432336703}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8740197457220110411
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4427072434519777085}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27ccceb47651d6bb74b6339932a7d544, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  loopClip: {fileID: 8300000, guid: 7b955449dc4dacc47b47352b3ba69d35, type: 3}
+  movingVolume: 0.6
+  waitingVolume: 0
+  movingPitch: 1
+  waitingPitch: 1
+  fadeSharpness: 4
+  departClip: {fileID: 0}
+  occasionalClips: []
+  occasionalInterval: 15
+  oneShotVolume: 1
+  oneShotPitchVariation: 0.1
+  honkClip: {fileID: 0}
+  honkDistance: 15
+  honkPathHalfWidth: 1.5
+  honkCooldown: 8
+  minDistance: 1
+  maxDistance: 12
+  dopplerLevel: 0
+  priority: 160

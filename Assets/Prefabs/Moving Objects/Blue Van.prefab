@@ -116,6 +116,7 @@ GameObject:
   - component: {fileID: 3813490343030437026}
   - component: {fileID: 5424457522608578726}
   - component: {fileID: 2563829154186571516}
+  - component: {fileID: 8168894551648613774}
   m_Layer: 13
   m_Name: Blue Van
   m_TagString: Untagged
@@ -190,3 +191,34 @@ MonoBehaviour:
   animator: {fileID: 0}
   speedParameter: Speed
   hazardCollider: {fileID: 915564217725710707}
+--- !u!114 &8168894551648613774
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7043941217796917025}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27ccceb47651d6bb74b6339932a7d544, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  loopClip: {fileID: 8300000, guid: 6cc70401e10c6ad91b3f094406af62b8, type: 3}
+  movingVolume: 0.8
+  waitingVolume: 0.35
+  movingPitch: 0.9
+  waitingPitch: 0.65
+  fadeSharpness: 2
+  departClip: {fileID: 0}
+  occasionalClips: []
+  occasionalInterval: 15
+  oneShotVolume: 1
+  oneShotPitchVariation: 0.05
+  honkClip: {fileID: 8300000, guid: 5b078d5de7d625cc8ba1e817e086868d, type: 3}
+  honkDistance: 15
+  honkPathHalfWidth: 1.5
+  honkCooldown: 8
+  minDistance: 3
+  maxDistance: 50
+  dopplerLevel: 0.5
+  priority: 64

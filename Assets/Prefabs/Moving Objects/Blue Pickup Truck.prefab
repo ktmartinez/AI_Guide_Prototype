@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 656613173002059404}
   - component: {fileID: 2569281714676229542}
   - component: {fileID: 3804619925254022369}
+  - component: {fileID: 1097202099394148410}
   m_Layer: 13
   m_Name: Blue Pickup Truck
   m_TagString: Untagged
@@ -642,3 +643,34 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &1097202099394148410
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1027905597914240053}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27ccceb47651d6bb74b6339932a7d544, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  loopClip: {fileID: 8300000, guid: 6cc70401e10c6ad91b3f094406af62b8, type: 3}
+  movingVolume: 0.8
+  waitingVolume: 0.35
+  movingPitch: 0.9
+  waitingPitch: 0.65
+  fadeSharpness: 2
+  departClip: {fileID: 0}
+  occasionalClips: []
+  occasionalInterval: 15
+  oneShotVolume: 1
+  oneShotPitchVariation: 0.05
+  honkClip: {fileID: 8300000, guid: 5b078d5de7d625cc8ba1e817e086868d, type: 3}
+  honkDistance: 15
+  honkPathHalfWidth: 1.5
+  honkCooldown: 8
+  minDistance: 3
+  maxDistance: 50
+  dopplerLevel: 0.5
+  priority: 64

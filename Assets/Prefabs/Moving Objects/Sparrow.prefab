@@ -73,6 +73,7 @@ GameObject:
   - component: {fileID: 8241144208429342043}
   - component: {fileID: 7446207502026821886}
   - component: {fileID: 8903892273555585269}
+  - component: {fileID: 3438425100032395121}
   m_Layer: 13
   m_Name: Sparrow
   m_TagString: Untagged
@@ -146,6 +147,7 @@ MonoBehaviour:
   bobFrequency: 0.6
   animator: {fileID: 4814222193806411476}
   speedParameter: Speed
+  warnPlayer: 0
   hazardCollider: {fileID: 4969351153267801020}
 --- !u!1 &3321807801271668919
 GameObject:
@@ -608,3 +610,34 @@ Transform:
   - {fileID: 4998856737878542340}
   m_Father: {fileID: 1174712236264545013}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3438425100032395121
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2861994997138948432}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27ccceb47651d6bb74b6339932a7d544, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  loopClip: {fileID: 8300000, guid: 068389380c4e74747b5a349b0947b3a2, type: 3}
+  movingVolume: 0.5
+  waitingVolume: 0
+  movingPitch: 1.1
+  waitingPitch: 1.1
+  fadeSharpness: 6
+  departClip: {fileID: 0}
+  occasionalClips: []
+  occasionalInterval: 15
+  oneShotVolume: 1
+  oneShotPitchVariation: 0.1
+  honkClip: {fileID: 0}
+  honkDistance: 15
+  honkPathHalfWidth: 1.5
+  honkCooldown: 8
+  minDistance: 1
+  maxDistance: 20
+  dopplerLevel: 0
+  priority: 200

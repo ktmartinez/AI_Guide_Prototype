@@ -3823,6 +3823,7 @@ GameObject:
   - component: {fileID: 1637469210536399696}
   - component: {fileID: 7178501778964082908}
   - component: {fileID: 8638209745198050177}
+  - component: {fileID: 6056513965385183971}
   m_Layer: 13
   m_Name: Woman in Green Dress
   m_TagString: Untagged
@@ -4232,3 +4233,34 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1822606430182548271}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6056513965385183971
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8172449988894112320}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27ccceb47651d6bb74b6339932a7d544, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  loopClip: {fileID: 8300000, guid: 75d66646a0a864d0d800deb850cac552, type: 3}
+  movingVolume: 0.45
+  waitingVolume: 0.45
+  movingPitch: 1
+  waitingPitch: 1
+  fadeSharpness: 2
+  departClip: {fileID: 0}
+  occasionalClips: []
+  occasionalInterval: 15
+  oneShotVolume: 1
+  oneShotPitchVariation: 0.1
+  honkClip: {fileID: 0}
+  honkDistance: 15
+  honkPathHalfWidth: 1.5
+  honkCooldown: 8
+  minDistance: 1
+  maxDistance: 15
+  dopplerLevel: 0
+  priority: 128

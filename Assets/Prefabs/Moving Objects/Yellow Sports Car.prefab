@@ -402,6 +402,7 @@ GameObject:
   - component: {fileID: 7921411662983650501}
   - component: {fileID: 2378589398307859186}
   - component: {fileID: 98684568402091277}
+  - component: {fileID: 5342913063649310717}
   m_Layer: 13
   m_Name: Yellow Sports Car
   m_TagString: Untagged
@@ -642,3 +643,34 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &5342913063649310717
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4352663230633748791}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27ccceb47651d6bb74b6339932a7d544, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  loopClip: {fileID: 8300000, guid: 6cc70401e10c6ad91b3f094406af62b8, type: 3}
+  movingVolume: 0.8
+  waitingVolume: 0.35
+  movingPitch: 1.25
+  waitingPitch: 0.85
+  fadeSharpness: 2
+  departClip: {fileID: 0}
+  occasionalClips: []
+  occasionalInterval: 15
+  oneShotVolume: 1
+  oneShotPitchVariation: 0.05
+  honkClip: {fileID: 8300000, guid: 5b078d5de7d625cc8ba1e817e086868d, type: 3}
+  honkDistance: 15
+  honkPathHalfWidth: 1.5
+  honkCooldown: 8
+  minDistance: 3
+  maxDistance: 50
+  dopplerLevel: 0.5
+  priority: 64

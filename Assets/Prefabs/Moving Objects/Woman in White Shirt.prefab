@@ -371,6 +371,7 @@ GameObject:
   - component: {fileID: 3087664680385386423}
   - component: {fileID: 8516890382983185411}
   - component: {fileID: 3039357984741196966}
+  - component: {fileID: 7989887552144274850}
   m_Layer: 13
   m_Name: Woman in White Shirt
   m_TagString: Untagged
@@ -4084,3 +4085,34 @@ Transform:
   m_Children: []
   m_Father: {fileID: 4328486940495437145}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7989887552144274850
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 761947492137275167}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27ccceb47651d6bb74b6339932a7d544, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  loopClip: {fileID: 8300000, guid: 75d66646a0a864d0d800deb850cac552, type: 3}
+  movingVolume: 0.45
+  waitingVolume: 0.45
+  movingPitch: 1
+  waitingPitch: 1
+  fadeSharpness: 2
+  departClip: {fileID: 0}
+  occasionalClips: []
+  occasionalInterval: 15
+  oneShotVolume: 1
+  oneShotPitchVariation: 0.1
+  honkClip: {fileID: 0}
+  honkDistance: 15
+  honkPathHalfWidth: 1.5
+  honkCooldown: 8
+  minDistance: 1
+  maxDistance: 15
+  dopplerLevel: 0
+  priority: 128

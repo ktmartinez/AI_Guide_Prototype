@@ -54,8 +54,10 @@ public class AIGuide : MonoBehaviour
     private float maxTTCOfInterest = 2.0f;
 
     // Variables for moving hazards (cars, pedestrians, animals - see WaypointMover)
-    private float movingHazardRadius = 12.0f; // only consider movers this close (XZ distance)
+    private float movingHazardRadius = 12.0f; // always consider movers this close (XZ distance) - faster movers are considered from further away
     private float maxMovingTTCOfInterest = 3.0f; // movers close faster than the player walks, so warn a little earlier
+    private float movingHazardSpeechDelay = 1.0f; // roughly how long the guide takes to start speaking, so warn this much earlier again
+    private float movingHazardInterruptSpeed = 2.5f; // only cut the guide off mid-sentence for movers closing faster than this (m/s) - cars, not pedestrians
 
     // Variables for prompting the user if they need assistance
     private float lastPlayerInteractionTime;
@@ -331,9 +333,9 @@ public class AIGuide : MonoBehaviour
                 // Check the player's velocity so we can determine hazards
                 checkPlayerVelocity();
 
-                // Check for objects too close to the player
-                if (!isDescribingRoute && m_OpenAIQueriesScript.targetForGuidance == null && !isGrabbing) // prevent the hazard alerts from interrupting the guidance/grabbing descriptions
-                    CheckHazardDistances();
+                // Check for objects too close to the player - static hazards wait so they don't interrupt the guidance/grabbing descriptions,
+                // but moving hazards (cars, pedestrians) are still checked, since they can come at the player at any time
+                CheckHazardDistances(!isDescribingRoute && m_OpenAIQueriesScript.targetForGuidance == null && !isGrabbing);
             }
 
             // Determine if guidance is required based on GPT-4 response
@@ -736,16 +738,17 @@ public class AIGuide : MonoBehaviour
     #endregion
 
     #region Proactive Hazard Helpers
-    private void CheckHazardDistances()
+    private void CheckHazardDistances(bool includeStaticHazards)
     {
         if (Time.time < nextHazardCheckTime) return;
         nextHazardCheckTime = Time.time + hazardCheckInterval;
 
+        // Moving objects can come at a player who is standing still or listening to the guide, so check them first - they interrupt the guide if needed
+        if (CheckMovingHazards()) return;
+        if (!includeStaticHazards) return;
+
         // If the AI guide is currently speaking, completely drop this hazard calculation to prevent building up a queue of historical hazards
         if (realtimeClient._isAiSpeaking) return;
-
-        // Moving objects can come at a player who is standing still, so check them before the player-velocity gate
-        if (CheckMovingHazards()) return;
 
         // Use the true velocity to minimize what we talk about in a cramped space
         if (trueWorldVelocity.magnitude < 0.3f) return;
@@ -886,26 +889,32 @@ public class AIGuide : MonoBehaviour
 
         GameObject bestCandidate = null;
         Vector3 bestVectorToHazard = Vector3.zero;
+        float bestRelativeSpeed = 0f;
         float lowestTimeToCollision = float.MaxValue;
+
+        // Warn early enough that the guide has started speaking before the TTC window closes
+        float warningWindow = maxMovingTTCOfInterest + movingHazardSpeechDelay;
 
         foreach (WaypointMover mover in WaypointMover.Active)
         {
+            if (!mover.warnPlayer) continue; // ambient flavor like birds
             Collider hit = mover.hazardCollider;
             if (hit == null || !hit.enabled || !hit.gameObject.activeInHierarchy) continue;
             if ((hazardLayerMask.value & (1 << hit.gameObject.layer)) == 0) continue;
 
-            // Only movers that share the player's body space matter - skip birds flying overhead
+            // Only movers that share the player's body space matter - skip anything passing overhead
             Bounds bounds = hit.bounds;
             if (bounds.min.y > headPosition.y + 0.3f || bounds.max.y < estimatedFloorY) continue;
-
-            Vector3 hazardPoint = hit.ClosestPoint(headPosition);
-            Vector3 vectorToHazard = new Vector3(hazardPoint.x, 0, hazardPoint.z) - flatPlayerPoint;
-            float distance = vectorToHazard.magnitude;
-            if (distance > movingHazardRadius) continue;
 
             // Velocity of the mover relative to the player, flattened to the ground plane
             Vector3 relativeVelocity = new Vector3(mover.Velocity.x - trueWorldVelocity.x, 0, mover.Velocity.z - trueWorldVelocity.z);
             if (relativeVelocity.sqrMagnitude < 0.01f) continue;
+
+            // Fast movers (cars) cover more ground before the warning lands, so look further out for them
+            Vector3 hazardPoint = hit.ClosestPoint(headPosition);
+            Vector3 vectorToHazard = new Vector3(hazardPoint.x, 0, hazardPoint.z) - flatPlayerPoint;
+            float distance = vectorToHazard.magnitude;
+            if (distance > Mathf.Max(movingHazardRadius, relativeVelocity.magnitude * warningWindow)) continue;
 
             // Closest point of approach between the mover and the player - skip movers that are leaving or will pass by
             Vector3 relativeCenter = new Vector3(bounds.center.x, 0, bounds.center.z) - flatPlayerPoint;
@@ -922,23 +931,28 @@ public class AIGuide : MonoBehaviour
                 if (closingSpeed <= 0.05f) continue;
                 timeToCollision = distance / closingSpeed;
             }
-            if (timeToCollision > maxMovingTTCOfInterest) continue;
+            if (timeToCollision > warningWindow) continue;
 
             if (timeToCollision < lowestTimeToCollision)
             {
                 lowestTimeToCollision = timeToCollision;
                 bestCandidate = hit.gameObject;
                 bestVectorToHazard = vectorToHazard;
+                bestRelativeSpeed = relativeVelocity.magnitude;
             }
         }
 
         if (bestCandidate == null || !ShouldPrompt(bestCandidate)) return false;
 
-        HandleMovingHazardPrompt(bestCandidate, bestVectorToHazard);
+        // Only cut the guide off for fast movers like cars - people and animals can wait until it finishes speaking
+        bool interruptGuide = bestRelativeSpeed >= movingHazardInterruptSpeed;
+        if (realtimeClient._isAiSpeaking && !interruptGuide) return false;
+
+        HandleMovingHazardPrompt(bestCandidate, bestVectorToHazard, interruptGuide);
         return true;
     }
 
-    private void HandleMovingHazardPrompt(GameObject hazard, Vector3 flatVectorToHazard)
+    private void HandleMovingHazardPrompt(GameObject hazard, Vector3 flatVectorToHazard, bool interruptGuide)
     {
         MarkHazardPrompted(hazard);
 
@@ -954,7 +968,18 @@ public class AIGuide : MonoBehaviour
                         "Use the conversation history to see how you've warned the player before and change up your language.";
         // Debug.Log("Moving Hazard Detection Response: " + prompt);
 
-        _ = realtimeClient.SendManualPrompt(prompt);
+        // A car won't wait for the guide to finish its sentence, so cut off whatever it's saying (or about to say)
+        if (interruptGuide)
+            _ = InterruptWithPrompt(prompt);
+        else
+            _ = realtimeClient.SendManualPrompt(prompt);
+    }
+
+    // Cancel before sending so the two websocket sends don't overlap
+    private async Task InterruptWithPrompt(string prompt)
+    {
+        await realtimeClient.CancelPrompt();
+        await realtimeClient.SendManualPrompt(prompt);
     }
 
     // May need to think about selectively sending hazards // making a harsher cooldown timer between when it can warn

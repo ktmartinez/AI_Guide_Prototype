@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 1755973032517116106}
   - component: {fileID: 8478502981553433436}
   - component: {fileID: 135557711324620419}
+  - component: {fileID: 4817600800210533687}
   m_Layer: 13
   m_Name: City Bus
   m_TagString: Untagged
@@ -190,3 +191,34 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 50.060646, y: 48.807068, z: 157.46114}
   m_Center: {x: 0, y: 24.403505, z: 0}
+--- !u!114 &4817600800210533687
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1283620955781400388}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27ccceb47651d6bb74b6339932a7d544, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  loopClip: {fileID: 8300000, guid: 6cc70401e10c6ad91b3f094406af62b8, type: 3}
+  movingVolume: 0.8
+  waitingVolume: 0.35
+  movingPitch: 0.75
+  waitingPitch: 0.55
+  fadeSharpness: 2
+  departClip: {fileID: 0}
+  occasionalClips: []
+  occasionalInterval: 15
+  oneShotVolume: 1
+  oneShotPitchVariation: 0.05
+  honkClip: {fileID: 8300000, guid: 5b078d5de7d625cc8ba1e817e086868d, type: 3}
+  honkDistance: 15
+  honkPathHalfWidth: 1.5
+  honkCooldown: 8
+  minDistance: 3
+  maxDistance: 50
+  dopplerLevel: 0.5
+  priority: 64
