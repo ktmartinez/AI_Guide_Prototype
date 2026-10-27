@@ -166,8 +166,11 @@ public class SharedMovement : MonoBehaviour
     // Finds necessary components from Guide scripts + assigns Guide game object
     void AssignGuide()
     {
-        // Assigns the guide as the Game Object with the AIGuide script
-        theGuide = FindObjectOfType<AIGuide>().transform.gameObject;
+        // Assigns the guide as the Game Object with the AIGuide script, once the guide has spawned in
+        AIGuide guideScript = FindObjectOfType<AIGuide>();
+        if (guideScript == null)
+            return;
+        theGuide = guideScript.gameObject;
 
         // Finds the VR Handling script on the Guide game object
         //m_VRHandlingScript = theGuide.GetComponentInChildren<VRHandling>();
@@ -252,6 +255,10 @@ public class SharedMovement : MonoBehaviour
     public void OnTriggerEnter(Collider other)
     {
         // Debug.Log("Collision detected");
+
+        // Triggers can fire before the player has spawned in
+        if (thePlayer == null)
+            return;
 
         // On collisions with objects, if the other object has a grab interactable component (is an interactable), keep collisions on
         // If not, turn collisions off - the guide falls in this second category where we want to ignore collisions while we're grabbing it

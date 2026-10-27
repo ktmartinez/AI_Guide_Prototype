@@ -132,8 +132,8 @@ public class TeleportationHandler : MonoBehaviour
             //Debug.Log($"[Right Interactor] Hitting: {hit2.collider.name}");
         }
 
-        // If the action of teleportation has completed
-        if (teleport.locomotionPhase == LocomotionPhase.Done)
+        // If the action of teleportation has completed (scenes like the Tutorial don't have the custom provider)
+        if (teleport != null && teleport.locomotionPhase == LocomotionPhase.Done)
         {
             Debug.Log("Teleport motion completed");
             characterController.center = new Vector3(0f, characterControllerCenterY, 0f);

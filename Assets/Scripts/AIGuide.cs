@@ -187,6 +187,9 @@ public class AIGuide : MonoBehaviour
 
         // Reset player interaction time with the client
         lastPlayerInteractionTime = Time.time;
+
+        // Have the guide greet the player now that the session is fully set up
+        await SendOpeningGreeting(memoryManager);
     }
 
     // For ensuring proper realtime data
@@ -432,21 +435,33 @@ public class AIGuide : MonoBehaviour
 
     private IEnumerator CaptureImageContext()
     {
+        // Scenes like the Tutorial don't have a perception sensor, so they only get screenshots (no masks or spatial telemetry)
+        bool hasSpatialTelemetry = perceptionSensor != null;
+
         // Trigger the screenshot
         camSystem.converted = false;
-        camSystem.CaptureScreenshot();
+        camSystem.CaptureScreenshot(!hasSpatialTelemetry);
 
         // Trigger the mask screenshots
-        masksCaptured = false;
-        perceptionSensor.RequestVisualTelemetry(() =>
+        masksCaptured = !hasSpatialTelemetry;
+        if (hasSpatialTelemetry)
         {
-            masksCaptured = true; // This fires when the batch rendering is complete
-        });
+            perceptionSensor.RequestVisualTelemetry(() =>
+            {
+                masksCaptured = true; // This fires when the batch rendering is complete
+            });
+        }
 
         // Wait for BOTH standard and mask captures to finish
         while (!camSystem.converted || !masksCaptured)
         {
             yield return null;
+        }
+
+        if (!hasSpatialTelemetry)
+        {
+            realtimeClient.SendVisualContext(camSystem.viewpointImageBase64, camSystem.birdsEyeImageBase64, camSystem.overheadImageBase64);
+            yield break;
         }
 
         // Grab the dynamic text context NOW that captures are done
@@ -717,8 +732,11 @@ public class AIGuide : MonoBehaviour
                 StopRouteDescriptions(); // keep the guide from talking if there are no targets
 
                 m_GuideFollowScript.enabled = true; // Turn guide follow back on if no target is given to the guide
-                m_SharedMovementScript.guideCollider.enabled = false; // Turns collider off so guide won't be grabbed accidentally as it follows the player
-                m_SharedMovementScript.OnTriggerExit(m_SharedMovementScript.guideCollider); // Triggers the exit event so the system sets the guide's grabbing trigger to false
+                if (m_SharedMovementScript.guideCollider != null) // Shared movement assigns the guide's collider once both the player and guide have spawned
+                {
+                    m_SharedMovementScript.guideCollider.enabled = false; // Turns collider off so guide won't be grabbed accidentally as it follows the player
+                    m_SharedMovementScript.OnTriggerExit(m_SharedMovementScript.guideCollider); // Triggers the exit event so the system sets the guide's grabbing trigger to false
+                }
             }
         }
     }
@@ -728,12 +746,11 @@ public class AIGuide : MonoBehaviour
     private void getSharedMovement()
     {
         if (m_SharedMovementScript == null)
-        {
             m_SharedMovementScript = FindObjectOfType<SharedMovement>();
-            // Can grab the camSystem once the shared movement script has been added + has added its own camera
-            if (camSystem == null && m_SharedMovementScript.camera != null)
-                camSystem = m_SharedMovementScript.camera;
-        }
+
+        // Can grab the camSystem once the shared movement script has been added + has added its own camera
+        if (camSystem == null && m_SharedMovementScript != null && m_SharedMovementScript.camera != null)
+            camSystem = m_SharedMovementScript.camera;
     }
     #endregion
 
@@ -985,6 +1002,67 @@ public class AIGuide : MonoBehaviour
     // May need to think about selectively sending hazards // making a harsher cooldown timer between when it can warn
     #endregion
 
+    #region Opening Greeting
+    private async Task SendOpeningGreeting(MemoryManager memoryManager)
+    {
+        if (m_SwitchToolsScript == null || !m_SwitchToolsScript.openingGreeting) return;
+
+        // Give the scene a moment to settle so the player is ready to hear the greeting
+        float interactionTimeBeforeDelay = lastPlayerInteractionTime;
+        await Task.Delay((int)(m_SwitchToolsScript.greetingDelay * 1000));
+
+        // Don't talk over the player if they started talking to the guide during the delay (or the guide was destroyed)
+        if (this == null || isRecording || realtimeClient._isAiSpeaking || lastPlayerInteractionTime != interactionTimeBeforeDelay)
+        {
+            Debug.Log("[AI Guide] Skipping opening greeting since the player already started interacting.");
+            return;
+        }
+
+        // A returning player (stateful session with past memory) already knows the guide, so only welcome them back
+        bool isReturningPlayer = memoryManager != null && memoryManager.statefulSession &&
+                                 !string.IsNullOrEmpty(memoryManager.GetFormattedSessionHistory());
+
+        string prompt = GetOpeningGreetingPrompt(isReturningPlayer);
+        Debug.Log($"[AI Guide] Sending opening greeting (returning player: {isReturningPlayer})");
+
+        _ = realtimeClient.SendManualPrompt(prompt);
+    }
+
+    private string GetOpeningGreetingPrompt(bool isReturningPlayer)
+    {
+        // Tell the player how to talk to the guide based on the active voice input mode
+        string howToTalk;
+        if (realtimeClient._continuousVoiceOn)
+            howToTalk = "they can just start talking to you whenever they want";
+        else if (realtimeClient._legacyHoldToSpeakOn)
+            howToTalk = "they can hold down the A button on their right controller while they talk to you";
+        else
+            howToTalk = "they can press the A button on their right controller and then talk to you";
+
+        if (isReturningPlayer)
+        {
+            return "The player has just arrived back in the virtual environment and hasn't said anything yet. " +
+                   "You have met them before, so do NOT introduce yourself again or list everything you can do. " +
+                   "In one or two short sentences, warmly welcome them back, and if it feels natural, briefly mention one thing you explored together last time. " +
+                   "Then ask them one simple question about what they'd like to do or explore today. For example: " +
+                   "Welcome back! It's Giddy again. Last time we explored [something from your memory] together. What would you like to explore today? " +
+                   "Speak directly to the player and do not acknowledge these instructions. Do not call any tools.";
+        }
+
+        return "The player has just arrived in the virtual environment for the first time and hasn't said anything yet. " +
+               "Greet them warmly and introduce yourself as Giddy, their sighted guide. " +
+               "In a few short sentences, explain what you can help with: describing what's around them and what things look like, " +
+               "telling them where things are, and guiding them to places by walking with them or teleporting them there. " +
+               $"Let them know that {howToTalk}, and that they can ask you anything at any time. " +
+               "Then end by asking them one simple, open question about what they'd like to know or do first. " +
+               "Keep the whole greeting under about 20 seconds when spoken, and don't describe the scene in detail yet. For example: " +
+               "Hi there, I'm Giddy, and I'll be your sighted guide today. I can tell you what's around you, describe what things look like, " +
+               "let you know where things are, and walk you anywhere you'd like to go. [How to talk to you.] " +
+               "So, what would you like to know about first? " +
+               "Speak directly to the player and do not acknowledge these instructions. Do not call any tools.";
+    }
+    #endregion
+
     #region Proactive Silence Helpers
     private void CheckForIdlePlayer()
     {
@@ -1102,6 +1180,15 @@ public class AIGuide : MonoBehaviour
     // otherwise, maybe have a bool in the openAIqueries that gets set when the function determines it wants to be grabbing
     public void StartGrabbing(string targetName)
     {
+        // Grab assist tracks the player's hand with the perception sensor, which scenes like the Tutorial don't have
+        if (perceptionSensor == null)
+        {
+            Debug.LogWarning("[AI Guide] Grab assist needs a SpatialPerceptionSensor in the scene, so it was skipped.");
+            _ = realtimeClient.SendManualPrompt($"You can't track the player's hand in this area, so you can't coach them to grab the {targetName}. " +
+                "Briefly tell them that, and offer to describe where it is instead. Keep it under 20 words.");
+            return;
+        }
+
         targetToGrab = targetName;
         isGrabbing = true;
 

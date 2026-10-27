@@ -3,7 +3,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 public class SwitchTools : MonoBehaviour
 {
@@ -33,6 +32,10 @@ public class SwitchTools : MonoBehaviour
     private GuideType _currentGuideType = GuideType.Baseline;
     [Tooltip("The silence time in seconds that the guide waits for before responding")]
     public float silenceThreshold = 2.5f; // default is 2.5 seconds, 1.2 cuts you off a lot
+    [Tooltip("If on, the guide greets the player and introduces itself when the session starts")]
+    public bool openingGreeting = true;
+    [Tooltip("The time in seconds after the guide connects before it greets the player")]
+    public float greetingDelay = 2f;
 
     public GuideType activeGuideType
     {
@@ -167,7 +170,7 @@ public class SwitchTools : MonoBehaviour
         }
     }*/
 
-    [FormerlySerializedAs("pushToTalk")]
+    // Not carried over from the old "pushToTalk" field, since pushToTalk = true meant tap-to-talk (now the default), the opposite of hold-to-speak
     [HideInInspector] public bool legacyHoldToSpeak = false;
     [HideInInspector] public bool continuousVoice = false;
     [HideInInspector] public bool personalVoicesOn = false;
