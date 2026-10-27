@@ -1049,7 +1049,7 @@ public class RealtimeGuideClient : MonoBehaviour
                     string userTranscript = (string)jsonObj["transcript"];
                     // LOGGER HOOK: User speech transcribed - call with the transcript this time
                     InteractionLogger.Instance?.OnUserFinishedSpeaking(userTranscript);
-                    memoryManager.LogConversationTurn("user", userTranscript);
+                    memoryManager?.LogConversationTurn("user", userTranscript);
                     break;
 
                 case "response.created":
@@ -1142,7 +1142,7 @@ public class RealtimeGuideClient : MonoBehaviour
 
                         // LOGGER HOOK: Guide completed speech response
                         InteractionLogger.Instance?.OnGuideFinishedSpeaking(remainingText, triggeredTool);
-                        memoryManager.LogConversationTurn("assistant", remainingText);
+                        memoryManager?.LogConversationTurn("assistant", remainingText);
                     }
                     else
                     {

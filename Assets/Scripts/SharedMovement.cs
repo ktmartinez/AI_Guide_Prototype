@@ -166,8 +166,11 @@ public class SharedMovement : MonoBehaviour
     // Finds necessary components from Guide scripts + assigns Guide game object
     void AssignGuide()
     {
-        // Assigns the guide as the Game Object with the AIGuide script
-        theGuide = FindObjectOfType<AIGuide>().transform.gameObject;
+        // Assigns the guide as the Game Object with the AIGuide script, once the guide has spawned in
+        AIGuide guideScript = FindObjectOfType<AIGuide>();
+        if (guideScript == null)
+            return;
+        theGuide = guideScript.gameObject;
 
         // Finds the VR Handling script on the Guide game object
         //m_VRHandlingScript = theGuide.GetComponentInChildren<VRHandling>();

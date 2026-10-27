@@ -35,6 +35,7 @@ public class ChangeEnvironmentLayouts : MonoBehaviour
         availableLayouts[0] = mainRoom; // Final room
         availableLayouts[1] = GameObject.Find(currentSceneName + " 2"); // E.g., Kitchen 2
         availableLayouts[2] = GameObject.Find(currentSceneName + " 3");
+        foundRooms = mainRoom != null && availableLayouts[1] != null && availableLayouts[2] != null; // Scenes like the Tutorial only have one layout
 
         switch (currentSceneName)
         {
@@ -56,9 +57,12 @@ public class ChangeEnvironmentLayouts : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        availableLayouts[2].SetActive(roomLayoutOne); 
-        availableLayouts[1].SetActive(roomLayoutTwo);
-        availableLayouts[0].SetActive(roomLayoutThree); // 0 is the main room, which we need to switch to third
+        if (foundRooms)
+        {
+            availableLayouts[2].SetActive(roomLayoutOne);
+            availableLayouts[1].SetActive(roomLayoutTwo);
+            availableLayouts[0].SetActive(roomLayoutThree); // 0 is the main room, which we need to switch to third
+        }
         if (foundTables)
         {
             //Debug.Log("Ready to switch tables");

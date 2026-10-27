@@ -54,7 +54,8 @@ public class CameraSystem : MonoBehaviour
     {
         // Gets the masking material from the perception sensor
         perceptionSensor = FindObjectOfType<SpatialPerceptionSensor>();
-        unlitMaskMaterialBase = perceptionSensor.unlitMaskMaterialBase;
+        if (perceptionSensor != null) // Only scenes like the Kitchen have a perception sensor, the Tutorial doesn't need masking
+            unlitMaskMaterialBase = perceptionSensor.unlitMaskMaterialBase;
 
         // Pulls the viewpointCamera automatically from the Main Camera under XR Origin
         viewpointCamera = GameObject.Find("Main Camera").GetComponent<Camera>();
