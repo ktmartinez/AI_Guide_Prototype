@@ -46,12 +46,22 @@ public class MoverAudio : MonoBehaviour
     [Range(0f, 5f)] public float dopplerLevel = 0.5f;
     [Tooltip("When too many sounds play at once, lower numbers keep playing (vehicles should win over birds)")]
     [Range(0, 256)] public int priority = 128;
+    [Tooltip("Stop the looping sound and skip one-shots while the listener is beyond maxDistance, so far-off movers cost no audio voice")]
+    public bool silenceWhenOutOfRange = true;
+
+    // How often each mover checks whether the listener is within earshot, and how far past maxDistance the loop starts
+    // (the rolloff is already silent at maxDistance, so starting a little early avoids an audible pop)
+    private const float RangeCheckInterval = 0.5f;
+    private const float RangeMargin = 1.1f;
 
     private WaypointMover mover;
+    private AnimationCurve rolloff;
     private AudioSource loopSource;
-    private AudioSource oneShotSource;
+    private AudioSource oneShotSource; // created the first time a one-shot plays
     private uint seed;
     private bool wasMoving;
+    private bool inRange;
+    private float nextRangeCheckTime;
     private long lastOccasionalSlot = long.MinValue;
     private float lastHonkTime = -999f;
 
@@ -65,41 +75,75 @@ public class MoverAudio : MonoBehaviour
         mover = GetComponent<WaypointMover>();
         seed = HashString(gameObject.scene.name + GetHierarchyPath(transform));
 
-        AnimationCurve rolloff = BuildRolloffCurve();
-        loopSource = CreateSource(rolloff);
-        oneShotSource = CreateSource(rolloff);
+        rolloff = BuildRolloffCurve();
+        if (loopClip != null) loopSource = CreateSource(rolloff);
     }
 
     void Start()
     {
         // WaypointMover has placed itself by now, so we know whether we start out moving or waiting
         wasMoving = IsMoving;
-        if (loopClip == null) return;
-
-        loopSource.clip = loopClip;
-        loopSource.loop = true;
-        loopSource.volume = wasMoving ? movingVolume : waitingVolume;
-        loopSource.pitch = wasMoving ? movingPitch : waitingPitch;
-        loopSource.Play();
-        loopSource.time = Random01(0, 0) * loopClip.length;
+        SetInRange(IsListenerInRange());
+        // Spread the range checks of different movers over frames
+        nextRangeCheckTime = Time.time + Random01(0, 3) * RangeCheckInterval;
     }
 
     void Update()
     {
-        bool moving = IsMoving;
+        if (Time.time >= nextRangeCheckTime)
+        {
+            nextRangeCheckTime = Time.time + RangeCheckInterval;
+            SetInRange(IsListenerInRange());
+        }
 
-        if (loopClip != null)
+        bool moving = IsMoving;
+        bool justDeparted = moving && !wasMoving;
+        wasMoving = moving;
+        if (!inRange) return;
+
+        if (loopSource != null)
         {
             float blend = 1f - Mathf.Exp(-fadeSharpness * Time.deltaTime);
             loopSource.volume = Mathf.Lerp(loopSource.volume, moving ? movingVolume : waitingVolume, blend);
             loopSource.pitch = Mathf.Lerp(loopSource.pitch, moving ? movingPitch : waitingPitch, blend);
         }
 
-        if (moving && !wasMoving) PlayOneShot(departClip);
-        wasMoving = moving;
-
+        if (justDeparted) PlayOneShot(departClip);
         UpdateOccasionalClips();
         UpdateHonk();
+    }
+
+    private bool IsListenerInRange()
+    {
+        if (!silenceWhenOutOfRange) return true;
+        AudioListener player = GetListener();
+        if (player == null) return false;
+        float range = maxDistance * RangeMargin;
+        return (player.transform.position - transform.position).sqrMagnitude <= range * range;
+    }
+
+    private void SetInRange(bool value)
+    {
+        if (value == inRange) return;
+        inRange = value;
+        if (loopSource == null) return;
+
+        if (inRange) StartLoop();
+        else loopSource.Stop();
+    }
+
+    private void StartLoop()
+    {
+        bool moving = IsMoving;
+        loopSource.clip = loopClip;
+        loopSource.loop = true;
+        loopSource.volume = moving ? movingVolume : waitingVolume;
+        loopSource.pitch = moving ? movingPitch : waitingPitch;
+        loopSource.Play();
+        // Each mover has its own offset into the clip so crowds don't play in sync, and the clock keeps clients matched after a restart
+        float length = loopClip.length;
+        if (length > 0f)
+            loopSource.time = (float)((Random01(0, 0) * length + MovingObjectClock.Now) % length);
     }
 
     // Time is split into slots of occasionalInterval, and each slot plays one clip at a seeded point within it
@@ -146,6 +190,7 @@ public class MoverAudio : MonoBehaviour
     private void PlayOneShot(AudioClip clip)
     {
         if (clip == null) return;
+        if (oneShotSource == null) oneShotSource = CreateSource(rolloff);
         oneShotSource.pitch = 1f + Random.Range(-oneShotPitchVariation, oneShotPitchVariation);
         oneShotSource.PlayOneShot(clip, oneShotVolume);
     }
