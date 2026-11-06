@@ -482,11 +482,16 @@ public static partial class MovingObjectsSceneSetup
         if (PrefabUtility.IsPartOfPrefabInstance(go)) PrefabUtility.RecordPrefabInstancePropertyModifications(audio);
     }
 
-    // Clip names are looked up in the movers' Audio folder first, then as full asset paths
+    // A full asset path is used as-is. A bare name is looked up in the movers' Audio folder, preferring a real recording (.mp3, .ogg)
+    // over the synthesized .wav, so dropping in a downloaded clip with the same name replaces the generated one on the next run.
     private static AudioClip LoadClip(string name, string moverName)
     {
         if (string.IsNullOrEmpty(name)) return null;
-        AudioClip clip = AssetDatabase.LoadAssetAtPath<AudioClip>(name.StartsWith("Assets/") ? name : AudioFolder + name);
+        AudioClip clip = null;
+        if (name.StartsWith("Assets/")) clip = AssetDatabase.LoadAssetAtPath<AudioClip>(name);
+        else
+            foreach (string extension in new[] { ".mp3", ".ogg", ".wav" })
+                if ((clip = AssetDatabase.LoadAssetAtPath<AudioClip>(AudioFolder + name + extension)) != null) break;
         if (clip == null) Debug.LogWarning($"[Scene Movers] '{moverName}': audio clip '{name}' not found yet - that sound is skipped.");
         return clip;
     }

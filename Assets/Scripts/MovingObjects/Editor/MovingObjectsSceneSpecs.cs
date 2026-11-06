@@ -13,21 +13,22 @@ using UnityEngine;
 // Coordinates are world space and come from Tools > Moving Objects > Survey Themed Scenes and the overview captures.
 public static partial class MovingObjectsSceneSetup
 {
-    // Sounds in Assets/Prefabs/Moving Objects/Audio (missing ones are skipped with a warning until they're added)
-    private const string HorseCartLoop = "horse-cart-loop.mp3";
-    private const string HorseWalkLoop = "horse-walk-loop.mp3";
-    private const string HorseWhinny = "horse-whinny.mp3";
-    private const string CowMoo = "cow-moo.mp3";
-    private const string DragonWingsLoop = "dragon-wings-loop.mp3";
-    private const string DragonRoar = "dragon-roar.mp3";
-    private const string HoverHumLoop = "hover-hum-loop.mp3";
-    private const string ThrusterBurst = "thruster-burst.mp3";
-    private const string UfoHumLoop = "ufo-hum-loop.mp3";
-    private const string AlienChirp = "alien-chirp.mp3";
-    private const string CreatureGrowl = "creature-growl.mp3";
-    private const string MagicShimmerLoop = "magic-shimmer-loop.mp3";
-    private const string BroomWhooshLoop = "broom-whoosh-loop.mp3";
-    private const string GhostMoan = "ghost-moan.mp3";
+    // Sounds in Assets/Prefabs/Moving Objects/Audio, by name: a real recording (.mp3/.ogg) wins over the synthesized .wav
+    // from Tools > Moving Objects > Generate Synthesized Sounds
+    private const string HorseCartLoop = "horse-cart-loop";
+    private const string HorseWalkLoop = "horse-walk-loop";
+    private const string HorseWhinny = "horse-whinny";
+    private const string CowMoo = "cow-moo";
+    private const string DragonWingsLoop = "dragon-wings-loop";
+    private const string DragonRoar = "dragon-roar";
+    private const string HoverHumLoop = "hover-hum-loop";
+    private const string ThrusterBurst = "thruster-burst";
+    private const string UfoHumLoop = "ufo-hum-loop";
+    private const string AlienChirp = "alien-chirp";
+    private const string CreatureGrowl = "creature-growl";
+    private const string MagicShimmerLoop = "magic-shimmer-loop";
+    private const string BroomWhooshLoop = "broom-whoosh-loop";
+    private const string GhostMoan = "ghost-moan";
     private const string FootstepsLoop = "Assets/Resources/Audio/general-walk.mp3";
 
     // Models already in the project
